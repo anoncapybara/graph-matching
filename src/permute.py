@@ -46,9 +46,3 @@ def permute_graph(perm,dic):
                 key=((ls[i],ls[j]))
                 ls[temp]=dic[key]
     return list(ls.values())
-
-def create_permutations():
-    ls=[]
-    for i in range (1,10):
-        ls.append(permute_graphs_over_n(i))
-    return ls

@@ -24,6 +24,7 @@ def to_dense(data,with_mask=False):
     else:
         return x,adj
 def permute_graphs_over_n(n):
+    
     permutations = list(itertools.permutations(range(n)))
     ls=[]
     dic={}
@@ -98,7 +99,8 @@ class BruteForceMatcher():
         in_embedd=data.x[:,1:].view(data.num_graphs,45,5)
         rec_embedd=rec_data.x.view(data.num_graphs,45,5)
 
-
+        #Brute force matching for all matchings
+        #Computes difference between all node pairs once for efficiency
         with torch.no_grad():
             pairwise_sum = (in_embedd[:, :, None, :] - rec_embedd[:, None, :, :])**2
             pairwise_sum=pairwise_sum[:,self.permutations[:self.num_perms,:,0],self.permutations[:self.num_perms,:,1]]
@@ -107,7 +109,7 @@ class BruteForceMatcher():
             pairwise_sum=pairwise_sum.mean(-1)
             values,idx=pairwise_sum.min(1)
             assert not torch.isinf(values).any()
-
+        #Select optimal matching
         perms=self.permutations[idx][:,:,1]
 
         reordered_embedd=rec_embedd[torch.arange(perms.size(0)).unsqueeze(1),perms]
@@ -143,6 +145,7 @@ class BruteForceMatcher():
         return loss.mean(), torch.tensor([0],device=self.device)
     
     def statistics_loss(self,batch,rec_batch):
+        """Computes loss on feature, degree and edge distribution statistics."""
         data=batch.clone()
         rec_data=rec_batch.clone()
 
@@ -264,6 +267,8 @@ class BruteForceSampleMatcher():
         in_embedd=in_embedd[:,:,1:]
         rec_embedd=rec_data.x.view(data.num_graphs,45,5)
 
+        #Brute force matching for all matchings
+        #Computes difference between all node pairs once for efficiency
         with torch.no_grad():
             pairwise_sum = (in_embedd[:, :, None, :] - rec_embedd[:, None, :, :])**2
             pairwise_sum=pairwise_sum[:,self.permutations[:self.num_perms,:,0],self.permutations[:self.num_perms,:,1]]
@@ -271,6 +276,7 @@ class BruteForceSampleMatcher():
             pairwise_sum=pairwise_sum.mean(-1)
             values, indices = pairwise_sum.view(pairwise_sum.size(0), -1).topk(self.sample_num, dim=1, largest=False)
 
+        #Sample index for near-optimal matching
         idx=self.sample_idx(values,indices)
         perms=self.permutations[idx][:,:,1]
         reordered_embedd=rec_embedd[torch.arange(perms.size(0)).unsqueeze(1),perms]
@@ -298,6 +304,8 @@ class BruteForceSampleMatcher():
         return loss
     
 class GNN_Loss():
+    """
+    Loss based on node embedding space for randomly initialized GNNs. Simply takes the mean squared error of the node embeddings."""
     def __init__(self,input_dim,num_encoders):
         self.device=torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.encoders=[]
